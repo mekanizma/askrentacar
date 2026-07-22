@@ -595,7 +595,9 @@ create policy "bookings_select_own_or_admin" on public.bookings
 
 drop policy if exists "bookings_update_admin" on public.bookings;
 create policy "bookings_update_admin" on public.bookings
-  for update using (public.is_admin() or auth.uid() = user_id);
+  for update
+  using (public.is_admin() or auth.uid() = user_id)
+  with check (public.is_admin() or auth.uid() = user_id);
 
 drop policy if exists "bookings_delete_admin" on public.bookings;
 create policy "bookings_delete_admin" on public.bookings

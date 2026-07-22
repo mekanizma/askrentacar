@@ -3,11 +3,39 @@ import type { CurrencyCode, LocaleCode } from "@/types";
 export const BRAND = {
   name: "ASK RENT A CAR",
   shortName: "ASK RENT A CAR",
-  tagline: "Premium Car Rental in Northern Cyprus",
+  tagline: "Girne - KKTC Premium Araç, Motorsiklet Kiralama",
   phone: "+90 392 815 00 00",
   whatsapp: "+905338881122",
   email: "info@askrentacar.com",
   domain: "https://askrentacar.com",
+  address: {
+    locality: "Girne",
+    region: "KKTC",
+    country: "CY",
+    countryName: "Kuzey Kıbrıs",
+  },
+  geo: {
+    latitude: 35.3417,
+    longitude: 33.3167,
+  },
+  seo: {
+    title:
+      "Girne Rent a Car | Kiralık Araç Girne · Motor & Bike Kiralama KKTC",
+    description:
+      "Girne rent a car, kiralık araç Girne, Girne motor kiralama ve Girne rent a bike hizmeti. KKTC Girne'de havalimanı teslimatlı premium araç, motor ve bisiklet kiralama.",
+    keywords: [
+      "kiralık araç girne",
+      "rent a car girne",
+      "girne rent a car",
+      "girne motor kiralama",
+      "girne rent a bike",
+      "kktc girne",
+      "girne araç kiralama",
+      "kuzey kıbrıs rent a car",
+      "ercan havalimanı araç kiralama",
+      "kyrenia car rental",
+    ],
+  },
 } as const;
 
 export const LOCALES: { code: LocaleCode; label: string; flag: string }[] = [

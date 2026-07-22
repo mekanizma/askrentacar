@@ -14,6 +14,7 @@ import {
   Tags,
   Users,
   X,
+  Banknote,
 } from "lucide-react";
 import { useAuth } from "@/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ const links = [
   ["/admin/users", "Kullanıcılar", Users],
   ["/admin/campaigns", "Kampanyalar", Tags],
   ["/admin/media", "Medya", ImageIcon],
+  ["/admin/settings#rates", "Kurlar", Banknote],
   ["/admin/settings", "Ayarlar", Settings],
 ] as const;
 
@@ -84,7 +86,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             onClick={() => setOpen(false)}
             className={cn(
               "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-300 transition hover:bg-white/10",
-              pathname === href && "bg-white/10 text-gold",
+              (pathname === href ||
+                (href.startsWith("/admin/settings") &&
+                  pathname === "/admin/settings")) &&
+                "bg-white/10 text-gold",
             )}
           >
             <Icon size={18} />

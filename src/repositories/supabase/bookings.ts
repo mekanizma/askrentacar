@@ -264,6 +264,14 @@ export const supabaseBookingRepository: BookingRepository = {
 
   async update(id, patch) {
     const sb = getSupabase();
+    const { data: userData, error: userError } = await sb.auth.getUser();
+    if (userError || !userData.user) {
+      const refreshed = await sb.auth.refreshSession();
+      if (refreshed.error || !refreshed.data.user) {
+        throw new Error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+      }
+    }
+
     const payload: Record<string, unknown> = {};
     if (patch.status !== undefined) payload.status = patch.status;
     if (patch.paymentStatus !== undefined) payload.payment_status = patch.paymentStatus;
@@ -279,11 +287,27 @@ export const supabaseBookingRepository: BookingRepository = {
       payload.license_front_name = patch.customer.licenseFrontName ?? null;
       payload.license_back_name = patch.customer.licenseBackName ?? null;
     }
-    const { error } = await sb.from("bookings").update(payload).eq("id", id);
-    if (error) throw error;
-    const updated = await this.getById(id);
-    if (!updated) throw new Error("Booking not found");
-    return updated;
+
+    const { data, error } = await sb
+      .from("bookings")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(
+        error.code === "PGRST116"
+          ? "Bu rezervasyonu güncelleme yetkiniz yok veya kayıt bulunamadı."
+          : error.message || "Rezervasyon güncellenemedi",
+      );
+    }
+
+    const addOns = await loadBookingAddOns([String(data.id)]);
+    return mapBooking(
+      data as Record<string, unknown>,
+      addOns.get(String(data.id)) ?? [],
+    );
   },
 
   async remove(id) {

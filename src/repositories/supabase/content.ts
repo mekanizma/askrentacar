@@ -210,7 +210,7 @@ export const supabaseContentRepository: ContentRepository = {
   },
 
   async updateSettings(patch: Partial<SiteSettings>) {
-    const current = await this.settings();
+    const current = await supabaseContentRepository.settings();
     const next = { ...current, ...patch };
     const { data, error } = await getSupabase()
       .from("site_settings")

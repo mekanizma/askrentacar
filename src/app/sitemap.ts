@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     "",
     "/vehicles",
+    "/girne",
     "/campaigns",
     "/blog",
     "/about",
@@ -20,9 +21,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/booking",
   ].map((path) => ({
     url: `${base}${path}`,
-    lastModified: new Date("2026-07-21"),
+    lastModified: new Date("2026-07-22"),
     changeFrequency: "weekly" as const,
-    priority: path === "" ? 1 : 0.7,
+    priority: path === "" || path === "/girne" ? 1 : 0.7,
   }));
 
   const vehicles = db.vehicles.map((v) => ({

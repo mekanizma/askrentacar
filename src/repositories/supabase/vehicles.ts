@@ -129,6 +129,15 @@ async function syncVehicleImages(vehicleId: string, images: Vehicle["images"]) {
   if (error) throw error;
 }
 
+async function getVehicleById(id: string) {
+  const sb = getSupabase();
+  const { data, error } = await sb.from("vehicles").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const [vehicle] = await hydrateVehicles([data as Record<string, unknown>]);
+  return vehicle ?? null;
+}
+
 export const supabaseVehicleRepository: VehicleRepository = {
   async list(filters = {}) {
     const sb = getSupabase();
@@ -175,12 +184,7 @@ export const supabaseVehicleRepository: VehicleRepository = {
   },
 
   async getById(id) {
-    const sb = getSupabase();
-    const { data, error } = await sb.from("vehicles").select("*").eq("id", id).maybeSingle();
-    if (error) throw error;
-    if (!data) return null;
-    const [vehicle] = await hydrateVehicles([data as Record<string, unknown>]);
-    return vehicle ?? null;
+    return getVehicleById(id);
   },
 
   async getBySlug(slug) {
@@ -203,7 +207,7 @@ export const supabaseVehicleRepository: VehicleRepository = {
     if (error) throw error;
     await syncVehicleImages(data.id, input.images ?? []);
     if (input.blockedPeriods?.length) {
-      await sb.from("vehicle_blocked_periods").insert(
+      const { error: blockedError } = await sb.from("vehicle_blocked_periods").insert(
         input.blockedPeriods.map((p) => ({
           vehicle_id: data.id,
           start_at: p.start,
@@ -211,8 +215,9 @@ export const supabaseVehicleRepository: VehicleRepository = {
           reason: p.reason,
         })),
       );
+      if (blockedError) throw blockedError;
     }
-    const created = await this.getById(data.id);
+    const created = await getVehicleById(data.id);
     if (!created) throw new Error("Vehicle create failed");
     return created;
   },
@@ -231,7 +236,7 @@ export const supabaseVehicleRepository: VehicleRepository = {
     if (patch.blockedPeriods) {
       await sb.from("vehicle_blocked_periods").delete().eq("vehicle_id", id);
       if (patch.blockedPeriods.length) {
-        await sb.from("vehicle_blocked_periods").insert(
+        const { error: blockedError } = await sb.from("vehicle_blocked_periods").insert(
           patch.blockedPeriods.map((p) => ({
             vehicle_id: id,
             start_at: p.start,
@@ -239,9 +244,10 @@ export const supabaseVehicleRepository: VehicleRepository = {
             reason: p.reason,
           })),
         );
+        if (blockedError) throw blockedError;
       }
     }
-    const updated = await this.getById(id);
+    const updated = await getVehicleById(id);
     if (!updated) throw new Error("Vehicle not found");
     return updated;
   },
@@ -253,7 +259,7 @@ export const supabaseVehicleRepository: VehicleRepository = {
   },
 
   async similar(vehicleId, limit = 4) {
-    const current = await this.getById(vehicleId);
+    const current = await getVehicleById(vehicleId);
     if (!current) return [];
     const { data } = await getSupabase()
       .from("vehicles")

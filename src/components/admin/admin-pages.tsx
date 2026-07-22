@@ -208,16 +208,65 @@ export function VehiclesAdmin() {
           status: String(fd.get("status")) as VehicleStatus,
         });
       else {
+        const now = Date.now();
+        const brand = String(fd.get("brand"));
+        const model = String(fd.get("model"));
         const template = data?.data[0];
-        if (!template) return;
+        const daily = Number(fd.get("daily"));
+        const defaults = {
+          categoryId: template?.categoryId ?? "",
+          featured: false,
+          rating: 5,
+          reviewCount: 0,
+          mileage: 0,
+          specs: template?.specs ?? {
+            year: new Date().getFullYear(),
+            fuel: "petrol" as const,
+            transmission: "automatic" as const,
+            seats: 5,
+            bags: 2,
+            doors: 4,
+            ac: true,
+            engine: "1.6",
+            horsepower: 120,
+            consumption: "6.5L",
+            drivetrain: "FWD",
+          },
+          pricing: {
+            daily,
+            weekly: Math.round(daily * 6),
+            monthly: Math.round(daily * 20),
+            currency: "EUR" as const,
+            discountPercent: 0,
+            deposit: 200,
+            insuranceDaily: 10,
+          },
+          features: template?.features ?? [],
+          images: template?.images ?? [],
+          description: template?.description ?? {
+            tr: `${brand} ${model}`,
+            en: `${brand} ${model}`,
+            ru: `${brand} ${model}`,
+          },
+          insuranceExpiry:
+            template?.insuranceExpiry ??
+            new Date(now + 365 * 86400000).toISOString(),
+          maintenanceDue:
+            template?.maintenanceDue ??
+            new Date(now + 180 * 86400000).toISOString(),
+          inspectionDue:
+            template?.inspectionDue ??
+            new Date(now + 365 * 86400000).toISOString(),
+        };
         await vehicleService.create({
-          ...template,
-          slug: `${String(fd.get("brand"))}-${String(fd.get("model"))}-${Date.now()}`.toLowerCase(),
-          plate: `NEW ${Date.now().toString().slice(-4)}`,
-          chassis: `NEW${Date.now()}`,
-          brand: String(fd.get("brand")),
-          model: String(fd.get("model")),
-          pricing: { ...template.pricing, daily: Number(fd.get("daily")) },
+          ...defaults,
+          slug: `${brand}-${model}-${now}`
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-"),
+          plate: `NEW ${String(now).slice(-4)}`,
+          chassis: `NEW${now}`,
+          brand,
+          model,
           status: String(fd.get("status")) as VehicleStatus,
         });
       }
@@ -421,9 +470,7 @@ export function BookingsAdmin() {
         status: value as BookingStatus,
         ...(value === "confirmed"
           ? { paymentStatus: "pending" as const }
-          : value === "cancelled"
-            ? { paymentStatus: "refunded" as const }
-            : {}),
+          : {}),
       });
       toast.success(
         value === "confirmed"
@@ -433,10 +480,16 @@ export function BookingsAdmin() {
             : "Durum güncellendi",
       );
       setSelected(updated);
-      qc.invalidateQueries({ queryKey: ["bookings"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-    } catch {
-      toast.error("Güncellenemedi");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["bookings"] }),
+        qc.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+      ]);
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Güncellenemedi";
+      toast.error(message);
     }
   };
 
@@ -1128,7 +1181,9 @@ export function MediaAdmin() {
 }
 
 export function SettingsAdmin() {
+  const qc = useQueryClient();
   const [settings, setSettings] = useState<SiteSettings>();
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     contentService.settings().then(setSettings);
   }, []);
@@ -1136,25 +1191,45 @@ export function SettingsAdmin() {
   const save = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const updated = await contentService.updateSettings({
-      brandName: String(fd.get("brandName")),
-      phone: String(fd.get("phone")),
-      whatsapp: String(fd.get("whatsapp")),
-      email: String(fd.get("email")),
-      address: { ...settings.address, tr: String(fd.get("address")) },
-      analytics: {
-        gaId: String(fd.get("gaId")),
-        gtmId: String(fd.get("gtmId")),
-      },
-    });
-    setSettings(updated);
-    toast.success("Ayarlar kaydedildi");
+    const eur = Number(fd.get("rateEur"));
+    const gbp = Number(fd.get("rateGbp"));
+    const tryRate = Number(fd.get("rateTry"));
+    if (!(eur > 0) || !(gbp > 0) || !(tryRate > 0)) {
+      toast.error("EUR, GBP ve TRY kurları 0'dan büyük olmalı");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await contentService.updateSettings({
+        brandName: String(fd.get("brandName")),
+        phone: String(fd.get("phone")),
+        whatsapp: String(fd.get("whatsapp")),
+        email: String(fd.get("email")),
+        address: { ...settings.address, tr: String(fd.get("address")) },
+        analytics: {
+          gaId: String(fd.get("gaId")),
+          gtmId: String(fd.get("gtmId")),
+        },
+        exchangeRates: {
+          EUR: eur,
+          GBP: gbp,
+          TRY: tryRate,
+        },
+      });
+      setSettings(updated);
+      await qc.invalidateQueries({ queryKey: ["site-settings"] });
+      toast.success("Ayarlar kaydedildi");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Kaydedilemedi");
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <>
       <Header
         title="Site Ayarları"
-        text="Marka, iletişim ve ölçümleme bilgilerini güncelleyin."
+        text="Marka, iletişim, ölçümleme ve döviz kurlarını güncelleyin."
       />
       <Card>
         <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
@@ -1186,8 +1261,79 @@ export function SettingsAdmin() {
             <Label>GTM ID</Label>
             <Input name="gtmId" defaultValue={settings.analytics.gtmId} />
           </div>
+
+          <div
+            id="rates"
+            className="sm:col-span-2 space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+          >
+            <div>
+              <h2 className="text-base font-semibold text-white">Döviz Kurları</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                EUR, GBP ve TRY değerlerini ayrı ayrı girin. Araç fiyatı hangi
+                para birimindeyse, seçilen birime bu oranlarla çevrilir.
+                Formül: tutar ÷ kaynak kur × hedef kur.
+              </p>
+            </div>
+            <div
+              className="grid gap-4 sm:grid-cols-3"
+              key={`rates-${settings.exchangeRates.EUR}-${settings.exchangeRates.GBP}-${settings.exchangeRates.TRY}`}
+            >
+              <div>
+                <Label>EUR kur değeri</Label>
+                <Input
+                  name="rateEur"
+                  type="number"
+                  step="0.0001"
+                  min="0.0001"
+                  defaultValue={settings.exchangeRates.EUR}
+                  required
+                />
+              </div>
+              <div>
+                <Label>GBP (Sterlin) kur değeri</Label>
+                <Input
+                  name="rateGbp"
+                  type="number"
+                  step="0.0001"
+                  min="0.0001"
+                  defaultValue={settings.exchangeRates.GBP}
+                  required
+                />
+              </div>
+              <div>
+                <Label>TRY (TL) kur değeri</Label>
+                <Input
+                  name="rateTry"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  defaultValue={settings.exchangeRates.TRY}
+                  required
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">
+              Güncel: EUR {settings.exchangeRates.EUR} · GBP{" "}
+              {settings.exchangeRates.GBP} · TRY {settings.exchangeRates.TRY}
+              {" · "}
+              Örnek 100 EUR →{" "}
+              {(
+                (100 / Number(settings.exchangeRates.EUR || 1)) *
+                Number(settings.exchangeRates.GBP || 1)
+              ).toFixed(2)}{" "}
+              £ /{" "}
+              {(
+                (100 / Number(settings.exchangeRates.EUR || 1)) *
+                Number(settings.exchangeRates.TRY || 1)
+              ).toFixed(2)}{" "}
+              ₺
+            </p>
+          </div>
+
           <div className="sm:col-span-2">
-            <Button type="submit">Ayarları kaydet</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Kaydediliyor..." : "Ayarları kaydet"}
+            </Button>
           </div>
         </form>
       </Card>

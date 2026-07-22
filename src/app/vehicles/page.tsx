@@ -3,8 +3,15 @@ import VehiclesPage from "./vehicles-client";
 import { Skeleton } from "@/components/ui/primitives";
 
 export const metadata = {
-  title: "Araç Filosu",
-  description: "Kuzey Kıbrıs'taki premium kiralık araçları inceleyin.",
+  title: "Kiralık Araç Filomuz | Girne Rent a Car KKTC",
+  description:
+    "Girne ve KKTC genelinde kiralık araç seçenekleri. Ekonomik, SUV, lüks ve aile araçlarıyla Girne rent a car.",
+  keywords: [
+    "kiralık araç girne",
+    "girne rent a car",
+    "kktc araç kiralama",
+    "girne filo",
+  ],
 };
 
 export default function Page() {

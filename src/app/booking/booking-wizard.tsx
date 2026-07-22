@@ -885,7 +885,12 @@ export default function BookingWizard() {
                 <Button
                   onClick={async () => {
                     const { downloadBookingPdf } = await import("@/lib/pdf");
-                    downloadBookingPdf(booking, vehicle);
+                    await downloadBookingPdf(booking, {
+                      vehicle,
+                      locations,
+                      addOns,
+                      locale: language,
+                    });
                   }}
                 >
                   {t("downloadPdf")}

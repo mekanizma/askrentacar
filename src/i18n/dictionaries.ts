@@ -52,6 +52,10 @@ const tr: Dict = {
   "home.stats": "Rakamlarla ASK",
   "home.blog": "Seyahat Rehberi",
   "home.region": "Kuzey Kıbrıs",
+  "home.seoTitle": "Girne ve KKTC'de Araç, Motor ve Bike Kiralama",
+  "home.seoBody":
+    "ASK RENT A CAR; kiralık araç Girne, Girne rent a car, Girne motor kiralama ve Girne rent a bike aramalarında öne çıkan yerel kiralama markasıdır. KKTC Girne merkezli hizmetimizle otel, liman ve Ercan Havalimanı teslimatı sunuyoruz.",
+  "home.seoLink": "Girne kiralama rehberi",
   "home.startBooking": "Rezervasyona Başla",
   "home.premiumVehicles": "Premium Araç",
   "home.happyGuests": "Mutlu Misafir",
@@ -230,6 +234,10 @@ const en: Dict = {
   "home.stats": "ASK in Numbers",
   "home.blog": "Travel Guide",
   "home.region": "Northern Cyprus",
+  "home.seoTitle": "Car, scooter and bike hire in Girne & Northern Cyprus",
+  "home.seoBody":
+    "ASK RENT A CAR is your local partner for Girne rent a car, motor hire and bike rental across Northern Cyprus, with hotel, harbour and Ercan Airport delivery.",
+  "home.seoLink": "Girne hire guide",
   "home.startBooking": "Start Booking",
   "home.premiumVehicles": "Premium Vehicles",
   "home.happyGuests": "Happy Guests",
@@ -410,6 +418,10 @@ const ru: Dict = {
   "home.stats": "ASK в цифрах",
   "home.blog": "Путеводитель",
   "home.region": "Северный Кипр",
+  "home.seoTitle": "Аренда авто, мото и велосипедов в Гирне и ТРСК",
+  "home.seoBody":
+    "ASK RENT A CAR — локальный сервис аренды авто в Гирне, мото и велосипедов по Северному Кипру с доставкой в отель, порт и аэропорт Эрджан.",
+  "home.seoLink": "Гид по аренде в Гирне",
   "home.startBooking": "Начать бронирование",
   "home.premiumVehicles": "Премиум-авто",
   "home.happyGuests": "Довольных гостей",

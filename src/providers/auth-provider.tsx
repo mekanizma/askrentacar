@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { authService, userService } from "@/services";
+import { getSupabase } from "@/lib/supabase/client";
 import { stripPassword } from "@/utils/user";
 import type { AuthSession, UserProfile } from "@/types";
 import { useLocale } from "@/providers/locale-provider";
@@ -64,6 +65,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     queryKey: ["session"],
     queryFn: authService.session,
   });
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DATA_PROVIDER !== "supabase") return;
+    const sb = getSupabase();
+    const { data } = sb.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        queryClient.setQueryData(["session"], null);
+        return;
+      }
+      if (
+        event === "SIGNED_IN" ||
+        event === "TOKEN_REFRESHED" ||
+        event === "USER_UPDATED"
+      ) {
+        void authService.session().then((next) => {
+          queryClient.setQueryData(["session"], next);
+        });
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, [queryClient]);
 
   const loginMutation = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>

@@ -35,6 +35,9 @@ export function Footer() {
                 {t(l.labelKey)}
               </Link>
             ))}
+            <Link href="/girne" className="hover:text-white">
+              Girne Rent a Car
+            </Link>
           </div>
         </div>
         <div>

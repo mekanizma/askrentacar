@@ -242,7 +242,7 @@ export default function AccountSection({ mode }: { mode: AccountMode }) {
 
 function BookingArea({ dashboard }: { dashboard: boolean }) {
   const { user } = useAuth();
-  const { t, dateLoc } = useAccountCopy();
+  const { t, dateLoc, locale } = useAccountCopy();
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["account-bookings", user?.id],
@@ -308,8 +308,22 @@ function BookingArea({ dashboard }: { dashboard: boolean }) {
                   size="sm"
                   variant="secondary"
                   onClick={async () => {
-                    const { downloadBookingPdf } = await import("@/lib/pdf");
-                    downloadBookingPdf(booking);
+                    const [{ downloadBookingPdf }, { vehicleService, contentService }] =
+                      await Promise.all([
+                        import("@/lib/pdf"),
+                        import("@/services"),
+                      ]);
+                    const [vehicle, locations, addOns] = await Promise.all([
+                      vehicleService.byId(booking.vehicleId),
+                      contentService.locations(),
+                      contentService.addOns(),
+                    ]);
+                    await downloadBookingPdf(booking, {
+                      vehicle,
+                      locations,
+                      addOns,
+                      locale,
+                    });
                   }}
                   aria-label={t.pdf}
                 >
