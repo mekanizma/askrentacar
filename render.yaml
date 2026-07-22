@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: askrentacar
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22.16.0"
+      - key: NEXT_PUBLIC_DATA_PROVIDER
+        value: supabase
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
