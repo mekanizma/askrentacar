@@ -216,9 +216,9 @@ export function HomePage() {
               key={campaign.id}
               className="group overflow-hidden rounded-[2rem] border-white/10 p-0"
             >
-              <div className="relative aspect-[16/9] overflow-hidden">
+              <div className="relative aspect-[16/9] overflow-hidden bg-slate-900">
                 <Image
-                  src={campaign.image}
+                  src={campaign.image || HERO_FALLBACK}
                   alt={localize(campaign.title, locale)}
                   fill
                   sizes="(max-width: 768px) 100vw, 33vw"

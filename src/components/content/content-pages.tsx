@@ -318,9 +318,12 @@ export function CampaignsPage() {
               ?.filter((x) => x.active)
               .map((item) => (
                 <Card key={item.id} className="overflow-hidden p-0">
-                  <div className="relative h-44">
+                  <div className="relative h-44 bg-slate-900">
                     <Image
-                      src={item.image}
+                      src={
+                        item.image ||
+                        "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=900&q=75"
+                      }
                       alt={localize(item.title, locale)}
                       fill
                       className="object-cover"

@@ -17,7 +17,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: post.seoTitle.tr,
     description: post.seoDescription.tr,
-    openGraph: { title: post.title.tr, images: [post.coverImage] },
+    openGraph: {
+      title: post.title.tr,
+      ...(post.coverImage ? { images: [post.coverImage] } : {}),
+    },
   };
 }
 
@@ -35,15 +38,27 @@ export default async function BlogDetailPage({ params }: Props) {
     image: post.coverImage,
   };
   const category =
-    { Travel: "Seyahat", Guides: "Rehberler", Tips: "İpuçları", News: "Haberler" }[
-      post.category
-    ] ?? post.category;
+    {
+      Travel: "Seyahat",
+      Guides: "Rehberler",
+      Tips: "İpuçları",
+      News: "Haberler",
+    }[post.category] ?? post.category;
 
   return (
     <article className="container-premium space-y-6 pb-20 pt-28">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="relative h-64 overflow-hidden rounded-3xl md:h-96">
-        <Image src={post.coverImage} alt={post.title.tr} fill className="object-cover" priority />
+        <Image
+          src={post.coverImage}
+          alt={post.title.tr}
+          fill
+          className="object-cover"
+          priority
+        />
       </div>
       <div className="text-sm uppercase tracking-wide text-gold">{category}</div>
       <h1 className="text-3xl font-semibold md:text-5xl">{post.title.tr}</h1>

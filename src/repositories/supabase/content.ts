@@ -146,31 +146,38 @@ export const supabaseContentRepository: ContentRepository = {
 
   async saveCampaign(campaign: Campaign) {
     const sb = getSupabase();
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      campaign.id,
-    );
-    const row = {
-      id: isUuid ? campaign.id : undefined,
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        campaign.id,
+      );
+    const row: Record<string, unknown> = {
       slug: campaign.slug,
       title: campaign.title,
       description: campaign.description,
       code: campaign.code,
       discount_percent: campaign.discountPercent,
-      image_url: campaign.image,
+      image_url: campaign.image || null,
       starts_at: campaign.startsAt,
       ends_at: campaign.endsAt,
       active: campaign.active,
     };
-    const { data, error } = await sb.from("campaigns").upsert(row).select("*").single();
+    if (isUuid) row.id = campaign.id;
+
+    const query = isUuid
+      ? sb.from("campaigns").upsert(row).select("*").single()
+      : sb.from("campaigns").insert(row).select("*").single();
+    const { data, error } = await query;
     if (error) throw error;
+
     await sb.from("campaign_categories").delete().eq("campaign_id", data.id);
     if (campaign.categoryIds.length) {
-      await sb.from("campaign_categories").insert(
+      const { error: linkError } = await sb.from("campaign_categories").insert(
         campaign.categoryIds.map((categoryId) => ({
           campaign_id: data.id,
           category_id: categoryId,
         })),
       );
+      if (linkError) throw linkError;
     }
     return mapCampaign(data as Record<string, unknown>, campaign.categoryIds);
   },

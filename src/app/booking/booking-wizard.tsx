@@ -102,6 +102,12 @@ const copy = {
     bookingFailed: "Could not complete the booking.",
     emailSent: "Reservation request sent. Waiting for admin approval.",
     customerValidation: "Please complete the customer details.",
+    loginRequired: "Please sign in to submit a reservation request.",
+    loginRequiredTitle: "Sign in required",
+    loginRequiredBody:
+      "You need an account to send a reservation request. Sign in or create an account to continue.",
+    loginCta: "Sign in",
+    registerCta: "Create account",
     licenseRequired: "Please upload both sides of your driving licence.",
     licenseSection: "Driving licence photos",
     licenseHint: "Upload clear photos of the front and back of your licence.",
@@ -174,6 +180,12 @@ const copy = {
     bookingFailed: "Rezervasyon tamamlanamadı.",
     emailSent: "Rezervasyon talebi gönderildi. Admin onayı bekleniyor.",
     customerValidation: "Lütfen müşteri bilgilerini eksiksiz doldurun.",
+    loginRequired: "Rezervasyon talebi göndermek için giriş yapmalısınız.",
+    loginRequiredTitle: "Giriş gerekli",
+    loginRequiredBody:
+      "Rezervasyon talebi göndermek için hesabınız olmalı. Devam etmek için giriş yapın veya kayıt olun.",
+    loginCta: "Giriş yap",
+    registerCta: "Kayıt ol",
     licenseRequired: "Lütfen ehliyetinizin ön ve arka yüzünü yükleyin.",
     licenseSection: "Ehliyet fotoğrafları",
     licenseHint: "Ehliyetinizin ön ve arka yüzünün net fotoğraflarını yükleyin.",
@@ -246,6 +258,12 @@ const copy = {
     bookingFailed: "Не удалось завершить бронирование.",
     emailSent: "Заявка отправлена. Ожидается одобрение администратора.",
     customerValidation: "Пожалуйста, заполните данные клиента.",
+    loginRequired: "Чтобы отправить заявку, войдите в аккаунт.",
+    loginRequiredTitle: "Требуется вход",
+    loginRequiredBody:
+      "Для отправки заявки на бронирование нужен аккаунт. Войдите или создайте аккаунт, чтобы продолжить.",
+    loginCta: "Войти",
+    registerCta: "Создать аккаунт",
     licenseRequired: "Загрузите фото лицевой и оборотной стороны прав.",
     licenseSection: "Фото водительских прав",
     licenseHint: "Загрузите чёткие фото лицевой и оборотной стороны прав.",
@@ -272,7 +290,7 @@ type CopyKey = keyof typeof copy.en;
 export default function BookingWizard() {
   const params = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { format, formatFrom } = useCurrency();
   const { locale } = useLocale();
   const language = locale === "tr" || locale === "ru" ? locale : "en";
@@ -312,6 +330,41 @@ export default function BookingWizard() {
   const [quote, setQuote] = useState<PriceQuote | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const bookingReturnPath = useMemo(() => {
+    const query = new URLSearchParams();
+    if (vehicleSlug) query.set("vehicle", vehicleSlug);
+    if (pickupLocationId) query.set("pickup", pickupLocationId);
+    if (dropoffLocationId) query.set("dropoff", dropoffLocationId);
+    if (pickupAt) query.set("from", pickupAt);
+    if (returnAt) query.set("to", returnAt);
+    if (campaignCode) query.set("campaign", campaignCode);
+    const qs = query.toString();
+    return qs ? `/booking?${qs}` : "/booking";
+  }, [
+    vehicleSlug,
+    pickupLocationId,
+    dropoffLocationId,
+    pickupAt,
+    returnAt,
+    campaignCode,
+  ]);
+
+  const goToLogin = useCallback(() => {
+    router.push(`/login?next=${encodeURIComponent(bookingReturnPath)}`);
+  }, [router, bookingReturnPath]);
+
+  const goToRegister = useCallback(() => {
+    router.push(`/register?next=${encodeURIComponent(bookingReturnPath)}`);
+  }, [router, bookingReturnPath]);
+
+  const requireAuth = useCallback(() => {
+    if (authLoading) return false;
+    if (user) return true;
+    toast.error(t("loginRequired"));
+    goToLogin();
+    return false;
+  }, [authLoading, user, t, goToLogin]);
 
   const { data: vehicle } = useQuery({
     queryKey: ["booking-vehicle", vehicleSlug],
@@ -429,11 +482,13 @@ export default function BookingWizard() {
 
   async function submitReservation() {
     if (!vehicle || !quote) return;
+    if (!requireAuth() || !user) return;
+
     const customer = customerForm.getValues();
     setSubmitting(true);
     try {
       const created = await bookingService.create({
-        userId: user?.id || "guest",
+        userId: user.id,
         vehicleId: vehicle.id,
         status: "pending",
         pickupLocationId,
@@ -460,7 +515,7 @@ export default function BookingWizard() {
         customer: {
           firstName: customer.firstName,
           lastName: customer.lastName,
-          email: customer.email,
+          email: user.email || customer.email,
           phone: customer.phone,
           licenseFrontUrl: customer.licenseFrontUrl,
           licenseBackUrl: customer.licenseBackUrl,
@@ -474,8 +529,12 @@ export default function BookingWizard() {
       setBooking(created);
       setStep(4);
       toast.success(t("emailSent"));
-    } catch {
-      toast.error(t("bookingFailed"));
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : t("bookingFailed");
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -493,6 +552,31 @@ export default function BookingWizard() {
         <h1 className="text-3xl font-semibold md:text-4xl">{t("title")}</h1>
         <p className="mt-2 text-slate-400">{t("subtitle")}</p>
       </div>
+
+      {!authLoading && !user && (
+        <Card className="flex flex-col gap-4 border border-gold/30 bg-gold/5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="min-w-0 space-y-1">
+            <h2 className="text-base font-semibold text-gold sm:text-lg">
+              {t("loginRequiredTitle")}
+            </h2>
+            <p className="text-sm leading-6 text-slate-300">
+              {t("loginRequiredBody")}
+            </p>
+          </div>
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button className="w-full sm:w-auto" onClick={goToLogin}>
+              {t("loginCta")}
+            </Button>
+            <Button
+              className="w-full sm:w-auto"
+              variant="secondary"
+              onClick={goToRegister}
+            >
+              {t("registerCta")}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <div
         className="flex gap-2 overflow-x-auto pb-2"
@@ -831,9 +915,11 @@ export default function BookingWizard() {
                 {t("back")}
               </Button>
               <Button
-                disabled={!canNext || submitting}
+                disabled={!canNext || submitting || authLoading}
                 onClick={async () => {
+                  if (step === 2 && !requireAuth()) return;
                   if (step === 3) {
+                    if (!requireAuth()) return;
                     const valid = await customerForm.trigger();
                     const hasLicense =
                       !!customerForm.getValues("licenseFrontUrl") &&

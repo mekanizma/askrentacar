@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -55,55 +56,85 @@ const copy: Record<
   },
 };
 
-export default function LoginPage() {
+function safeNextPath(raw: string | null) {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/account";
+  return raw;
+}
+
+function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { locale } = useLocale();
   const t = copy[locale];
+  const nextPath = safeNextPath(searchParams.get("next"));
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "demo@askrentacar.com", password: "Demo123!" },
   });
 
   return (
-    <div className="container-premium flex justify-center pb-20 pt-28">
-      <Card className="w-full max-w-md space-y-4">
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
-        <p className="whitespace-pre-line text-sm text-slate-400">{t.demoHint}</p>
-        <form
-          className="space-y-3"
-          onSubmit={form.handleSubmit(async (values) => {
-            await login(values.email, values.password);
-            router.push("/account");
-          })}
-        >
-          <div>
-            <Label htmlFor="login-email">{t.email}</Label>
-            <Input id="login-email" type="email" autoComplete="email" aria-label={t.email} {...form.register("email")} />
-          </div>
-          <div>
-            <Label htmlFor="login-password">{t.password}</Label>
-            <Input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              aria-label={t.password}
-              {...form.register("password")}
-            />
-          </div>
-          <Button className="w-full" type="submit">
-            {t.submit}
-          </Button>
-        </form>
-        <div className="flex flex-col gap-2 text-sm text-slate-400 sm:flex-row sm:justify-between">
-          <Link href="/register" className="hover:text-white">
-            {t.createAccount}
-          </Link>
-          <Link href="/forgot-password" className="hover:text-white">
-            {t.forgotPassword}
-          </Link>
+    <Card className="w-full max-w-md space-y-4">
+      <h1 className="text-2xl font-semibold">{t.title}</h1>
+      <p className="whitespace-pre-line text-sm text-slate-400">{t.demoHint}</p>
+      <form
+        className="space-y-3"
+        onSubmit={form.handleSubmit(async (values) => {
+          await login(values.email, values.password);
+          router.push(nextPath);
+        })}
+      >
+        <div>
+          <Label htmlFor="login-email">{t.email}</Label>
+          <Input
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            aria-label={t.email}
+            {...form.register("email")}
+          />
         </div>
-      </Card>
+        <div>
+          <Label htmlFor="login-password">{t.password}</Label>
+          <Input
+            id="login-password"
+            type="password"
+            autoComplete="current-password"
+            aria-label={t.password}
+            {...form.register("password")}
+          />
+        </div>
+        <Button className="w-full" type="submit">
+          {t.submit}
+        </Button>
+      </form>
+      <div className="flex flex-col gap-2 text-sm text-slate-400 sm:flex-row sm:justify-between">
+        <Link
+          href={`/register?next=${encodeURIComponent(nextPath)}`}
+          className="hover:text-white"
+        >
+          {t.createAccount}
+        </Link>
+        <Link href="/forgot-password" className="hover:text-white">
+          {t.forgotPassword}
+        </Link>
+      </div>
+    </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <div className="container-premium flex justify-center pb-20 pt-28">
+      <Suspense
+        fallback={
+          <Card className="w-full max-w-md p-6 text-sm text-slate-400">
+            …
+          </Card>
+        }
+      >
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }

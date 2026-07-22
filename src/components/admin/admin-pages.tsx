@@ -930,30 +930,65 @@ export function CampaignsAdmin() {
   const { data } = useCampaigns();
   const [mode, setMode] = useState<"closed" | "create" | "edit">("closed");
   const [editing, setEditing] = useState<Campaign | null>(null);
+  const [saving, setSaving] = useState(false);
   const save = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const title = String(fd.get("title") ?? "").trim();
+    const code = String(fd.get("code") ?? "").trim().toUpperCase();
+    const discountPercent = Number(fd.get("discount"));
+    if (!title || !code || Number.isNaN(discountPercent)) {
+      toast.error("Başlık, kod ve indirim zorunlu");
+      return;
+    }
+
     const now = Date.now();
-    const base = editing ?? data?.[0];
-    if (!base) return;
-    await contentService.saveCampaign({
-      ...base,
+    const emptyLocalized = { tr: "", en: "", ru: "" };
+    const payload: Campaign = {
       id: editing?.id ?? `cmp_${now}`,
       slug: editing?.slug ?? `campaign-${now}`,
-      title: { ...base.title, tr: String(fd.get("title")) },
-      code: String(fd.get("code")),
-      discountPercent: Number(fd.get("discount")),
+      title: {
+        tr: title,
+        en: editing?.title.en || title,
+        ru: editing?.title.ru || title,
+      },
+      description: editing?.description ?? { ...emptyLocalized, tr: title },
+      code,
+      discountPercent,
+      image: editing?.image ?? "",
+      startsAt: editing?.startsAt ?? new Date().toISOString(),
+      endsAt:
+        editing?.endsAt ??
+        new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
       active: fd.get("active") === "on",
-    });
-    toast.success("Kampanya kaydedildi");
-    qc.invalidateQueries({ queryKey: ["campaigns"] });
-    setMode("closed");
-    setEditing(null);
+      categoryIds: editing?.categoryIds ?? [],
+    };
+
+    setSaving(true);
+    try {
+      await contentService.saveCampaign(payload);
+      toast.success("Kampanya kaydedildi");
+      await qc.invalidateQueries({ queryKey: ["campaigns"] });
+      setMode("closed");
+      setEditing(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Kampanya kaydedilemedi";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
   };
   const remove = async (id: string) => {
-    await contentService.removeCampaign(id);
-    toast.success("Kampanya silindi");
-    qc.invalidateQueries({ queryKey: ["campaigns"] });
+    try {
+      await contentService.removeCampaign(id);
+      toast.success("Kampanya silindi");
+      qc.invalidateQueries({ queryKey: ["campaigns"] });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Kampanya silinemedi";
+      toast.error(message);
+    }
   };
   return (
     <>
@@ -999,11 +1034,14 @@ export function CampaignsAdmin() {
               />{" "}
               Aktif
             </label>
-            <div className="flex gap-2 sm:col-span-2">
-              <Button>Kaydet</Button>
+            <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <Button type="submit" disabled={saving}>
+                {saving ? "Kaydediliyor..." : "Kaydet"}
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
+                disabled={saving}
                 onClick={() => {
                   setMode("closed");
                   setEditing(null);

@@ -9,6 +9,43 @@ function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
   return new Date(aStart) < new Date(bEnd) && new Date(aEnd) > new Date(bStart);
 }
 
+async function dataUrlToBlob(dataUrl: string) {
+  const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  if (!match) throw new Error("Invalid license image");
+  const contentType = match[1] || "image/jpeg";
+  const binary = atob(match[2]!);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return { blob: new Blob([bytes], { type: contentType }), contentType };
+}
+
+async function uploadLicenseImage(
+  userId: string,
+  side: "front" | "back",
+  value?: string,
+) {
+  if (!value) return null;
+  if (!value.startsWith("data:")) return value;
+
+  const sb = getSupabase();
+  const { blob, contentType } = await dataUrlToBlob(value);
+  const ext = contentType.includes("png") ? "png" : "jpg";
+  const path = `${userId}/${Date.now()}-${side}.${ext}`;
+  const { error } = await sb.storage.from("licenses").upload(path, blob, {
+    contentType,
+    upsert: true,
+  });
+  if (error) throw new Error(error.message || "License upload failed");
+
+  const { data, error: signedError } = await sb.storage
+    .from("licenses")
+    .createSignedUrl(path, 60 * 60 * 24 * 365);
+  if (signedError || !data?.signedUrl) {
+    return `licenses/${path}`;
+  }
+  return data.signedUrl;
+}
+
 async function loadBookingAddOns(bookingIds: string[]) {
   const map = new Map<string, Booking["addOns"]>();
   if (!bookingIds.length) return map;
@@ -134,8 +171,24 @@ export const supabaseBookingRepository: BookingRepository = {
 
   async create(input) {
     const sb = getSupabase();
+    const {
+      data: { session },
+    } = await sb.auth.getSession();
+    if (!session?.user) {
+      throw new Error("Rezervasyon için giriş yapmalısınız");
+    }
+
+    const userId = session.user.id;
+    if (input.userId && input.userId !== "guest" && input.userId !== userId) {
+      throw new Error("Oturum kullanıcısı eşleşmiyor");
+    }
+
     const vehicle = await supabaseVehicleRepository.getById(input.vehicleId);
     if (!vehicle) throw new Error("Vehicle not found");
+
+    if (new Date(input.returnAt) <= new Date(input.pickupAt)) {
+      throw new Error("İade tarihi teslim alma tarihinden sonra olmalı");
+    }
 
     const manuallyBlocked = (vehicle.blockedPeriods ?? []).some((period) =>
       overlaps(input.pickupAt, input.returnAt, period.start, period.end),
@@ -154,8 +207,10 @@ export const supabaseBookingRepository: BookingRepository = {
     );
     if (conflict) throw new Error("Selected vehicle is not available for these dates");
 
-    const userId =
-      !input.userId || input.userId === "guest" ? null : input.userId;
+    const [licenseFrontUrl, licenseBackUrl] = await Promise.all([
+      uploadLicenseImage(userId, "front", input.customer.licenseFrontUrl),
+      uploadLicenseImage(userId, "back", input.customer.licenseBackUrl),
+    ]);
 
     const { data, error } = await sb
       .from("bookings")
@@ -178,10 +233,10 @@ export const supabaseBookingRepository: BookingRepository = {
         currency: input.currency,
         customer_first_name: input.customer.firstName,
         customer_last_name: input.customer.lastName,
-        customer_email: input.customer.email,
+        customer_email: input.customer.email || session.user.email || "",
         customer_phone: input.customer.phone,
-        license_front_url: input.customer.licenseFrontUrl ?? null,
-        license_back_url: input.customer.licenseBackUrl ?? null,
+        license_front_url: licenseFrontUrl,
+        license_back_url: licenseBackUrl,
         license_front_name: input.customer.licenseFrontName ?? null,
         license_back_name: input.customer.licenseBackName ?? null,
         payment_method: input.paymentMethod,
@@ -190,7 +245,7 @@ export const supabaseBookingRepository: BookingRepository = {
       })
       .select("*")
       .single();
-    if (error) throw error;
+    if (error) throw new Error(error.message || "Booking create failed");
 
     if (input.addOns?.length) {
       const { error: addOnError } = await sb.from("booking_add_ons").insert(
@@ -201,12 +256,10 @@ export const supabaseBookingRepository: BookingRepository = {
           unit_price: item.unitPrice,
         })),
       );
-      if (addOnError) throw addOnError;
+      if (addOnError) throw new Error(addOnError.message || "Add-on save failed");
     }
 
-    const created = await this.getById(data.id);
-    if (!created) throw new Error("Booking create failed");
-    return created;
+    return mapBooking(data as Record<string, unknown>, input.addOns ?? []);
   },
 
   async update(id, patch) {

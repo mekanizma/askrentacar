@@ -14,12 +14,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const vehicle = createSeedDatabase().vehicles.find((v) => v.slug === slug);
   if (!vehicle) return { title: "Araç" };
+  const image = vehicle.images[0]?.url;
   return {
     title: `${vehicle.brand} ${vehicle.model}`,
     description: vehicle.description.tr,
     openGraph: {
       title: `${vehicle.brand} ${vehicle.model}`,
-      images: [vehicle.images[0]?.url || ""],
+      ...(image ? { images: [image] } : {}),
     },
   };
 }
