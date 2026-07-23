@@ -486,6 +486,10 @@ function VehicleEditor({
       features: FEATURES.filter(
         (feature) => data.get(`feature_${feature}`) === "on",
       ),
+      included: String(data.get("included") || "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
       images: images.map((image, order) => ({
         ...image,
         order,
@@ -861,6 +865,27 @@ function VehicleEditor({
               <p className="mt-2 text-xs text-slate-500">
                 Bu metin kaydedilirken sitenin diğer dilleri için otomatik
                 çevrilir.
+              </p>
+            </Field>
+            <Field label="Kiralamanıza Dahil" className="lg:col-span-3">
+              <Textarea
+                name="included"
+                defaultValue={(
+                  vehicle?.included?.length
+                    ? vehicle.included
+                    : [
+                        "48 saate kadar ücretsiz iptal",
+                        "7/24 yol ve WhatsApp desteği",
+                        "Ercan Havalimanı teslimatı",
+                        "Her teslimat öncesi kontrol",
+                      ]
+                ).join("\n")}
+                className="min-h-28"
+                placeholder={"Her satıra bir madde yazın"}
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                Araç detay sayfasındaki &quot;Kiralamanıza Dahil&quot; listesi.
+                Her satır bir madde olur.
               </p>
             </Field>
             <Field label="Sigorta Bitiş">

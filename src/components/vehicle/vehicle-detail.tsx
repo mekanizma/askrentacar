@@ -142,12 +142,15 @@ export function VehicleDetail({ slug }: { slug: string }) {
     },
   ];
 
-  const included = [
-    t("vehicle.freeCancellation"),
-    t("vehicle.support247"),
-    t("vehicle.airportDelivery"),
-    t("vehicle.inspected"),
-  ];
+  const included =
+    vehicle.included?.length > 0
+      ? vehicle.included
+      : [
+          t("vehicle.freeCancellation"),
+          t("vehicle.support247"),
+          t("vehicle.airportDelivery"),
+          t("vehicle.inspected"),
+        ];
 
   return (
     <>

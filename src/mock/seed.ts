@@ -376,6 +376,12 @@ export function createVehicles(categories: Category[]): Vehicle[] {
         insuranceDaily: Math.round(daily * 0.12),
       },
       features: FEATURES.filter((_, idx) => (i + idx) % 3 !== 0).slice(0, 8),
+      included: [
+        "48 saate kadar ücretsiz iptal",
+        "7/24 yol ve WhatsApp desteği",
+        "Ercan Havalimanı teslimatı",
+        "Her teslimat öncesi kontrol",
+      ],
       images: vehicleImages(i, brand, model),
       videoUrl: "https://www.youtube.com/embed/aqz-KE-bpKQ",
       description: {

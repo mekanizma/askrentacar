@@ -102,6 +102,8 @@ export interface Vehicle {
   specs: VehicleSpecs;
   pricing: VehiclePricing;
   features: string[];
+  /** Items shown under "Kiralamanıza Dahil" on the vehicle page. */
+  included: string[];
   images: MediaAsset[];
   videoUrl?: string;
   description: LocalizedString;

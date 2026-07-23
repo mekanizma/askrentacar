@@ -39,6 +39,10 @@ export function Header() {
             aria-label={BRAND.name}
           >
             <span className="pointer-events-none absolute left-0 top-1/2 h-[7.5rem] w-[7.5rem] -translate-y-1/2 sm:h-[9rem] sm:w-[9rem] md:h-[10rem] md:w-[10rem]">
+              <span
+                aria-hidden
+                className="absolute -inset-[8%] -z-10 scale-110 rounded-full bg-slate-950/80 blur-[40px] sm:blur-[48px]"
+              />
               <Image
                 src={BRAND.logoSrc}
                 alt={BRAND.name}

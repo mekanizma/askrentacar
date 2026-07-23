@@ -243,6 +243,12 @@ export function VehiclesAdmin() {
             insuranceDaily: 10,
           },
           features: template?.features ?? [],
+          included: template?.included ?? [
+            "48 saate kadar ücretsiz iptal",
+            "7/24 yol ve WhatsApp desteği",
+            "Ercan Havalimanı teslimatı",
+            "Her teslimat öncesi kontrol",
+          ],
           images: template?.images ?? [],
           description: template?.description ?? {
             tr: `${brand} ${model}`,

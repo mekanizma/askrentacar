@@ -13,12 +13,12 @@ export function Footer() {
       <div className="container-premium grid gap-6 py-8 sm:grid-cols-3 sm:gap-8 sm:py-9">
         <div className="space-y-2">
           <div className="relative h-14 w-14 sm:h-16 sm:w-16">
-            <span className="pointer-events-none absolute left-0 top-1/2 h-[7.5rem] w-[7.5rem] -translate-y-1/2 sm:h-[9rem] sm:w-[9rem] md:h-[10rem] md:w-[10rem]">
+            <span className="pointer-events-none absolute left-0 top-1/2 h-[9rem] w-[9rem] -translate-y-1/2 sm:h-[10.5rem] sm:w-[10.5rem] md:h-[12rem] md:w-[12rem]">
               <Image
                 src={BRAND.logoSrc}
                 alt={BRAND.name}
                 fill
-                sizes="(max-width: 640px) 120px, (max-width: 768px) 144px, 160px"
+                sizes="(max-width: 640px) 144px, (max-width: 768px) 168px, 192px"
                 className="object-contain object-left"
               />
             </span>

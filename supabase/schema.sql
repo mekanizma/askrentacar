@@ -187,6 +187,7 @@ create table if not exists public.vehicles (
   deposit numeric(12,2) not null default 0,
   insurance_daily numeric(12,2) not null default 0,
   features text[] not null default '{}',
+  included text[] not null default '{}',
   video_url text,
   description jsonb not null default '{"tr":"","en":"","ru":""}'::jsonb,
   insurance_expiry date,
