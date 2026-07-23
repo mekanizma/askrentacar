@@ -43,6 +43,16 @@ export const mockBookingRepository: BookingRepository = {
     return withLatency(paginate(items, filters.page, filters.pageSize ?? 20));
   },
 
+  async busyPeriods(vehicleId) {
+    const db = getDatabase();
+    const active = new Set(["pending", "confirmed", "delivered"]);
+    return withLatency(
+      db.bookings
+        .filter((b) => b.vehicleId === vehicleId && active.has(b.status))
+        .map((b) => ({ start: b.pickupAt, end: b.returnAt })),
+    );
+  },
+
   async getById(id) {
     return withLatency(getDatabase().bookings.find((b) => b.id === id) ?? null);
   },
@@ -114,7 +124,7 @@ export const mockBookingRepository: BookingRepository = {
     const conflict = db.bookings.some(
       (b) =>
         b.vehicleId === input.vehicleId &&
-        b.status !== "cancelled" &&
+        ["pending", "confirmed", "delivered"].includes(b.status) &&
         overlaps(input.pickupAt, input.returnAt, b.pickupAt, b.returnAt),
     );
     if (conflict)

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/providers/auth-provider";
 import { Button } from "@/components/ui/button";
+import { BRAND } from "@/constants";
 import { cn } from "@/utils/cn";
 
 const links = [
@@ -61,7 +62,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="min-w-0">
           <div className="relative mb-2 h-20 w-20">
             <Image
-              src="/logo.png"
+              src={BRAND.logoSrc}
               alt="ASK RENT A CAR"
               fill
               sizes="80px"

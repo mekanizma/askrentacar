@@ -4,6 +4,9 @@ export const BRAND = {
   name: "ASK RENT A CAR",
   shortName: "ASK RENT A CAR",
   tagline: "Girne - KKTC Premium Araç, Motorsiklet Kiralama",
+  logo: "/logo.png",
+  /** Cache-bust so Next Image picks up logo replacements. */
+  logoSrc: "/logo.png?v=20260723",
   phone: "+90 392 815 00 00",
   whatsapp: "+905338881122",
   email: "info@askrentacar.com",

@@ -26,6 +26,7 @@ export const bookingService = {
   list: (filters?: BookingFilters) => repositories.bookings.list(filters),
   byId: (id: string) => repositories.bookings.getById(id),
   byCode: (code: string) => repositories.bookings.getByCode(code),
+  busyPeriods: (vehicleId: string) => repositories.bookings.busyPeriods(vehicleId),
   quote: repositories.bookings.quote,
   create: repositories.bookings.create,
   update: repositories.bookings.update,

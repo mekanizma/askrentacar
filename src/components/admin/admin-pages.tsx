@@ -37,6 +37,7 @@ import type {
   Vehicle,
   VehicleStatus,
 } from "@/types";
+import { BRAND } from "@/constants";
 import { Button } from "@/components/ui/button";
 import {
   Badge,
@@ -417,9 +418,10 @@ export function VehiclesAdmin() {
 export function BookingsAdmin() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("pending");
+  const [status, setStatus] = useState("");
   const [selected, setSelected] = useState<Booking | null>(null);
   const [licensePreview, setLicensePreview] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const { data, isLoading } = useBookings({
     q,
     status: (status as BookingStatus) || undefined,
@@ -465,23 +467,29 @@ export function BookingsAdmin() {
   }, [selected, licensePreview]);
 
   const update = async (id: string, value: string) => {
+    setUpdatingId(id);
     try {
       const updated = await bookingService.update(id, {
         status: value as BookingStatus,
         ...(value === "confirmed"
           ? { paymentStatus: "pending" as const }
-          : {}),
+          : value === "cancelled"
+            ? { paymentStatus: "refunded" as const }
+            : {}),
       });
       toast.success(
         value === "confirmed"
           ? "Rezervasyon onaylandı"
           : value === "cancelled"
-            ? "Rezervasyon reddedildi"
+            ? "Rezervasyon iptal edildi"
             : "Durum güncellendi",
       );
-      setSelected(updated);
+      setSelected((current) =>
+        current?.id === updated.id ? updated : current,
+      );
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["bookings"] }),
+        qc.invalidateQueries({ queryKey: ["vehicle-busy-periods"] }),
         qc.invalidateQueries({ queryKey: ["dashboard-stats"] }),
       ]);
     } catch (err) {
@@ -490,6 +498,37 @@ export function BookingsAdmin() {
           ? err.message
           : "Güncellenemedi";
       toast.error(message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const removeBooking = async (id: string, code: string) => {
+    if (
+      !window.confirm(
+        `${code} rezervasyonu kalıcı olarak silinsin mi? Bu işlem geri alınamaz.`,
+      )
+    ) {
+      return;
+    }
+    setUpdatingId(id);
+    try {
+      await bookingService.remove(id);
+      toast.success("Rezervasyon silindi");
+      setSelected((current) => (current?.id === id ? null : current));
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["bookings"] }),
+        qc.invalidateQueries({ queryKey: ["vehicle-busy-periods"] }),
+        qc.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+      ]);
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Silinemedi";
+      toast.error(message);
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -497,11 +536,81 @@ export function BookingsAdmin() {
     ? vehicleMap.get(selected.vehicleId)
     : undefined;
 
+  const statusOptions = [
+    "pending",
+    "confirmed",
+    "delivered",
+    "cancelled",
+    "completed",
+  ] as const;
+
+  const BookingActions = ({
+    booking,
+    layout = "list",
+  }: {
+    booking: Booking;
+    layout?: "list" | "detail";
+  }) => {
+    const busy = updatingId === booking.id;
+    return (
+      <div
+        className={
+          layout === "detail"
+            ? "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end"
+            : "flex flex-col gap-2 sm:items-end"
+        }
+      >
+        <Select
+          aria-label={`${booking.code} durumu`}
+          className={layout === "detail" ? "sm:w-48" : "sm:w-40"}
+          value={booking.status}
+          disabled={busy}
+          onChange={(e) => update(booking.id, e.target.value)}
+        >
+          {statusOptions.map((x) => (
+            <option key={x} value={x}>
+              {statusLabel(x)}
+            </option>
+          ))}
+        </Select>
+        <div className="flex flex-wrap gap-2">
+          {booking.status === "pending" && (
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => update(booking.id, "confirmed")}
+            >
+              Onayla
+            </Button>
+          )}
+          {booking.status !== "cancelled" && (
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={busy}
+              onClick={() => update(booking.id, "cancelled")}
+            >
+              İptal et
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => removeBooking(booking.id, booking.code)}
+          >
+            Sil
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <Header
         title="Rezervasyonlar"
-        text="Web taleplerini onaylayın veya reddedin; durumları yönetin."
+        text="Tüm rezervasyonları görüntüleyin; onaylayın, iptal edin veya durumunu değiştirin."
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_220px]">
         <Input
@@ -575,39 +684,7 @@ export function BookingsAdmin() {
                 className="flex flex-col gap-2 sm:items-end"
                 onClick={(e) => e.stopPropagation()}
               >
-                {b.status === "pending" ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" onClick={() => update(b.id, "confirmed")}>
-                      Onayla
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => update(b.id, "cancelled")}
-                    >
-                      Reddet
-                    </Button>
-                  </div>
-                ) : (
-                  <Select
-                    aria-label={`${b.code} durumu`}
-                    className="sm:w-40"
-                    value={b.status}
-                    onChange={(e) => update(b.id, e.target.value)}
-                  >
-                    {[
-                      "pending",
-                      "confirmed",
-                      "delivered",
-                      "cancelled",
-                      "completed",
-                    ].map((x) => (
-                      <option key={x} value={x}>
-                        {statusLabel(x)}
-                      </option>
-                    ))}
-                  </Select>
-                )}
+                <BookingActions booking={b} />
               </div>
             </Card>
           ))}
@@ -662,7 +739,7 @@ export function BookingsAdmin() {
                 <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={selectedVehicle.images[0]?.url || "/logo.png"}
+                    src={selectedVehicle.images[0]?.url || BRAND.logoSrc}
                     alt=""
                     className="h-full w-full object-cover"
                   />
@@ -803,39 +880,8 @@ export function BookingsAdmin() {
               )}
             </DetailBlock>
 
-            <div className="mt-6 flex flex-col gap-2 border-t border-white/10 pt-4 sm:flex-row sm:justify-end">
-              {selected.status === "pending" ? (
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={() => update(selected.id, "cancelled")}
-                  >
-                    Reddet
-                  </Button>
-                  <Button onClick={() => update(selected.id, "confirmed")}>
-                    Onayla
-                  </Button>
-                </>
-              ) : (
-                <Select
-                  aria-label="Durum güncelle"
-                  className="sm:w-48"
-                  value={selected.status}
-                  onChange={(e) => update(selected.id, e.target.value)}
-                >
-                  {[
-                    "pending",
-                    "confirmed",
-                    "delivered",
-                    "cancelled",
-                    "completed",
-                  ].map((x) => (
-                    <option key={x} value={x}>
-                      {statusLabel(x)}
-                    </option>
-                  ))}
-                </Select>
-              )}
+            <div className="mt-6 flex flex-col gap-2 border-t border-white/10 pt-4">
+              <BookingActions booking={selected} layout="detail" />
             </div>
           </div>
         </div>

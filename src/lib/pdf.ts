@@ -355,7 +355,7 @@ export async function downloadBookingPdf(
   const [regularFont, boldFont, logoDataUrl] = await Promise.all([
     loadBinaryString("/fonts/NotoSans-Regular.ttf"),
     loadBinaryString("/fonts/NotoSans-Bold.ttf"),
-    loadDataUrl("/logo.png"),
+    loadDataUrl(BRAND.logo),
   ]);
 
   const pdf = new jsPDF({

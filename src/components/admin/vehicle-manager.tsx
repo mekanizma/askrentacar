@@ -28,6 +28,7 @@ import {
   Skeleton,
   Textarea,
 } from "@/components/ui/primitives";
+import { BRAND } from "@/constants";
 import { useBookings, useCategories, useVehicles } from "@/hooks/use-data";
 import { localize, vehicleService } from "@/services";
 import { useLocale } from "@/providers/locale-provider";
@@ -223,7 +224,7 @@ export function VehicleManager() {
             >
               <div className="relative h-28 overflow-hidden rounded-xl">
                 <Image
-                  src={vehicle.images[0]?.url || "/logo.png"}
+                  src={vehicle.images[0]?.url || BRAND.logoSrc}
                   alt={`${vehicle.brand} ${vehicle.model}`}
                   fill
                   unoptimized={vehicle.images[0]?.url.startsWith("data:")}
@@ -554,7 +555,7 @@ function VehicleEditor({
     );
     const booked = (vehicle ? (bookings?.data ?? []) : []).some(
       (booking) =>
-        booking.status !== "cancelled" &&
+        ["pending", "confirmed", "delivered"].includes(booking.status) &&
         start < new Date(booking.returnAt) &&
         end > new Date(booking.pickupAt),
     );
@@ -1113,9 +1114,9 @@ function VehicleEditor({
                       className={
                         "grid aspect-square place-items-center rounded-lg text-xs " +
                         (state === "booked"
-                          ? "bg-blue-500/20 text-blue-200"
+                          ? "bg-rose-500/30 text-rose-100 font-semibold"
                           : state === "blocked"
-                            ? "bg-rose-500/20 text-rose-200"
+                            ? "bg-rose-500/15 text-rose-300 line-through"
                             : state === "free"
                               ? "bg-emerald-500/10 text-emerald-200"
                               : "")
@@ -1132,13 +1133,20 @@ function VehicleEditor({
                   Müsait
                 </span>
                 <span className="flex items-center gap-2">
-                  <i className="h-2.5 w-2.5 rounded-full bg-blue-400" />{" "}
-                  Rezervasyon
+                  <i className="h-2.5 w-2.5 rounded-full bg-rose-500" />{" "}
+                  Kiralandı / rezervasyon
                 </span>
                 <span className="flex items-center gap-2">
-                  <i className="h-2.5 w-2.5 rounded-full bg-rose-400" /> Kapalı
+                  <i className="h-2.5 w-2.5 rounded-full bg-rose-300" /> Admin
+                  kapalı
                 </span>
               </div>
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                Kırmızı günler otomatik gelir: onay bekleyen ve aktif
+                rezervasyonlar sitede de dolu görünür. İptal veya onay için
+                Rezervasyonlar sayfasını kullanın. Ekstra kapatma için sağdaki
+                formu kullanın.
+              </p>
             </div>
 
             <div className="space-y-4">
@@ -1181,6 +1189,57 @@ function VehicleEditor({
               </div>
 
               <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Aktif rezervasyonlar
+                </p>
+                {(bookings?.data ?? [])
+                  .filter((booking) =>
+                    ["pending", "confirmed", "delivered"].includes(
+                      booking.status,
+                    ),
+                  )
+                  .slice(0, 8)
+                  .map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="rounded-xl border border-rose-400/15 bg-rose-500/10 p-3 text-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-rose-100">
+                          {booking.code}
+                        </p>
+                        <span className="text-[10px] uppercase tracking-wide text-rose-200/80">
+                          {booking.status}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {new Date(booking.pickupAt).toLocaleDateString("tr-TR")}{" "}
+                        –{" "}
+                        {new Date(booking.returnAt).toLocaleDateString("tr-TR")}
+                      </p>
+                    </div>
+                  ))}
+                {!vehicle && (
+                  <p className="text-sm text-slate-500">
+                    Araç kaydedildikten sonra rezervasyonlar burada görünür.
+                  </p>
+                )}
+                {vehicle &&
+                  !(bookings?.data ?? []).some((booking) =>
+                    ["pending", "confirmed", "delivered"].includes(
+                      booking.status,
+                    ),
+                  ) && (
+                    <p className="text-sm text-slate-500">
+                      Bu araç için aktif rezervasyon yok.
+                    </p>
+                  )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Admin kapalı dönemler
+                </p>
                 {blockedPeriods.map((period) => (
                   <div
                     key={period.id}

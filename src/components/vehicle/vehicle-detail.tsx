@@ -22,9 +22,13 @@ import {
   Expand,
 } from "lucide-react";
 import { VehicleCard } from "@/components/cards/vehicle-card";
+import {
+  BookingDateCalendar,
+  dateToLocalInput,
+} from "@/components/booking/booking-date-calendar";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, Skeleton } from "@/components/ui/primitives";
-import { useReviews, useVehicle } from "@/hooks/use-data";
+import { useVehicle, useVehicleBusyPeriods } from "@/hooks/use-data";
 import { localize, vehicleService } from "@/services";
 import { useCurrency } from "@/providers/currency-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -32,7 +36,7 @@ import { cn } from "@/utils/cn";
 
 export function VehicleDetail({ slug }: { slug: string }) {
   const { data: vehicle, isLoading } = useVehicle(slug);
-  const { data: reviews } = useReviews(vehicle?.id);
+  const { data: busyPeriods } = useVehicleBusyPeriods(vehicle?.id);
   const { data: similar } = useQuery({
     queryKey: ["similar", vehicle?.id],
     queryFn: () => vehicleService.similar(vehicle!.id),
@@ -43,6 +47,8 @@ export function VehicleDetail({ slug }: { slug: string }) {
   const [emblaRef, embla] = useEmblaCarousel({ loop: true });
   const [selectedImage, setSelectedImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [rangeStart, setRangeStart] = useState<Date | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
 
   const onSelect = useCallback(() => {
     if (embla) setSelectedImage(embla.selectedScrollSnap());
@@ -79,18 +85,13 @@ export function VehicleDetail({ slug }: { slug: string }) {
     };
   }, [lightboxOpen, embla]);
 
-  const availabilityMonth = useMemo(
-    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    [],
-  );
-  const availabilityDays = useMemo(() => {
-    const count = new Date(
-      availabilityMonth.getFullYear(),
-      availabilityMonth.getMonth() + 1,
-      0,
-    ).getDate();
-    return Array.from({ length: count }, (_, i) => i + 1);
-  }, [availabilityMonth]);
+  const bookingHref = useMemo(() => {
+    if (!vehicle) return "/booking";
+    const query = new URLSearchParams({ vehicle: vehicle.slug });
+    if (rangeStart) query.set("from", dateToLocalInput(rangeStart, "10:00"));
+    if (rangeEnd) query.set("to", dateToLocalInput(rangeEnd, "10:00"));
+    return `/booking?${query.toString()}`;
+  }, [vehicle, rangeStart, rangeEnd]);
 
   if (isLoading) {
     return (
@@ -324,10 +325,12 @@ export function VehicleDetail({ slug }: { slug: string }) {
               </div>
             </div>
 
-            <Link href={`/booking?vehicle=${vehicle.slug}`} className="block">
+            <Link href={bookingHref} className="block">
               <Button size="lg" className="w-full">
                 <CalendarDays className="h-4 w-4" />
-                {t("vehicle.bookNow")}
+                {rangeStart && rangeEnd
+                  ? t("vehicle.continueBooking")
+                  : t("vehicle.bookNow")}
               </Button>
             </Link>
             <p className="mt-3 text-center text-xs leading-5 text-slate-500">
@@ -377,111 +380,50 @@ export function VehicleDetail({ slug }: { slug: string }) {
           </Card>
 
           <Card className="rounded-[2rem] p-5 md:p-7">
-            <div className="flex items-start justify-between gap-4">
-              <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <h2 className="text-xl font-semibold">
                   {t("vehicle.calendar")}
                 </h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  {t("vehicle.selectDate")} ·{" "}
-                  <span className="capitalize">
-                    {availabilityMonth.toLocaleDateString(locale, {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </span>
-                </p>
               </div>
-              <ShieldCheck className="h-7 w-7 text-gold" />
+              <ShieldCheck className="h-7 w-7 shrink-0 text-gold" />
             </div>
-            <div className="mt-5 grid grid-cols-7 gap-1.5">
-              {availabilityDays.map((day) => {
-                const dayStart = new Date(
-                  availabilityMonth.getFullYear(),
-                  availabilityMonth.getMonth(),
-                  day,
-                  0,
-                  0,
-                  0,
-                );
-                const dayEnd = new Date(
-                  availabilityMonth.getFullYear(),
-                  availabilityMonth.getMonth(),
-                  day,
-                  23,
-                  59,
-                  59,
-                );
-                const unavailable = (vehicle.blockedPeriods ?? []).some(
-                  (period) =>
-                    dayStart < new Date(period.end) &&
-                    dayEnd > new Date(period.start),
-                );
-                return (
-                  <div
-                    key={day}
-                    title={
-                      unavailable
-                        ? t("vehicle.unavailable")
-                        : t("vehicle.available")
-                    }
-                    className={cn(
-                      "grid aspect-square place-items-center rounded-lg text-xs",
-                      unavailable
-                        ? "bg-rose-500/10 text-rose-300/70"
-                        : "bg-emerald-500/10 text-emerald-200",
-                    )}
-                  >
-                    {day}
-                  </div>
-                );
-              })}
-            </div>
+
+            <BookingDateCalendar
+              className="mt-2"
+              blockedPeriods={vehicle.blockedPeriods}
+              busyPeriods={busyPeriods}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              onChange={(start, end) => {
+                setRangeStart(start);
+                setRangeEnd(end);
+              }}
+              showClear={!(rangeStart && rangeEnd)}
+            />
+
+            {rangeStart && rangeEnd && (
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => {
+                    setRangeStart(null);
+                    setRangeEnd(null);
+                  }}
+                >
+                  {t("vehicle.clearDates")}
+                </Button>
+                <Link href={bookingHref} className="flex-1">
+                  <Button className="w-full">
+                    {t("vehicle.continueBooking")}
+                  </Button>
+                </Link>
+              </div>
+            )}
           </Card>
         </div>
-
-        <section className="mt-14">
-          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-gold">
-                {t("vehicle.reviewTitle")}
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold md:text-3xl">
-                {t("vehicle.reviewSubtitle")}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2 text-gold">
-              <Star className="h-5 w-5 fill-current" />
-              <span className="text-lg font-semibold">{vehicle.rating}</span>
-              <span className="text-sm text-slate-500">/ 5</span>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {(reviews ?? []).map((review) => (
-              <Card key={review.id} className="rounded-2xl p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-medium">{review.userName}</p>
-                    <p className="mt-1 text-xs text-emerald-300">
-                      {review.verified ? `✓ ${t("vehicle.verified")}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 text-gold">
-                    <Star className="h-4 w-4 fill-current" />
-                    {review.rating}
-                  </div>
-                </div>
-                <h3 className="mt-4 font-medium">{review.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  {review.comment}
-                </p>
-              </Card>
-            ))}
-            {(reviews ?? []).length === 0 && (
-              <Card>{t("vehicle.noReviews")}</Card>
-            )}
-          </div>
-        </section>
 
         {(similar ?? []).length > 0 && (
           <section className="mt-14">

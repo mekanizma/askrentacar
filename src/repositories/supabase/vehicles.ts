@@ -162,14 +162,13 @@ export const supabaseVehicleRepository: VehicleRepository = {
     if (filters.pickupAt && filters.returnAt) {
       const start = filters.pickupAt;
       const end = filters.returnAt;
-      const { data: bookings } = await sb
-        .from("bookings")
-        .select("vehicle_id, pickup_at, return_at, status")
-        .neq("status", "cancelled");
+      const { data: busyRows, error: busyError } = await sb.rpc(
+        "get_busy_vehicle_ids",
+        { p_start: start, p_end: end },
+      );
+      if (busyError) throw busyError;
       const booked = new Set(
-        (bookings ?? [])
-          .filter((b) => start < b.return_at && end > b.pickup_at)
-          .map((b) => b.vehicle_id as string),
+        ((busyRows ?? []) as { vehicle_id: string }[]).map((row) => row.vehicle_id),
       );
       vehicles = vehicles.filter((v) => {
         const manuallyBlocked = (v.blockedPeriods ?? []).some(

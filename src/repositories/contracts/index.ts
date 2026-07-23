@@ -16,6 +16,7 @@ import type {
   SiteSettings,
   UserProfile,
   Vehicle,
+  VehicleBusyPeriod,
   VehicleFilters,
   AddOn,
 } from "@/types";
@@ -34,6 +35,8 @@ export interface BookingRepository {
   list(filters?: BookingFilters): Promise<PaginatedResult<Booking>>;
   getById(id: string): Promise<Booking | null>;
   getByCode(code: string): Promise<Booking | null>;
+  /** Active (non-cancelled) rental windows for a vehicle — safe for public calendars. */
+  busyPeriods(vehicleId: string): Promise<VehicleBusyPeriod[]>;
   create(input: Omit<Booking, "id" | "code" | "createdAt" | "updatedAt">): Promise<Booking>;
   update(id: string, patch: Partial<Booking>): Promise<Booking>;
   remove(id: string): Promise<void>;

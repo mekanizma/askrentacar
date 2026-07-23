@@ -1,4 +1,4 @@
-import type { Booking, PriceQuote } from "@/types";
+import type { Booking, PriceQuote, VehicleBusyPeriod } from "@/types";
 import type { BookingRepository } from "@/repositories/contracts";
 import { getSupabase } from "@/lib/supabase/client";
 import { daysBetween } from "@/utils/format";
@@ -70,6 +70,22 @@ async function hydrateBookings(rows: Record<string, unknown>[]): Promise<Booking
   return rows.map((row) => mapBooking(row, addOns.get(String(row.id)) ?? []));
 }
 
+async function getVehicleBusyPeriods(
+  vehicleId: string,
+): Promise<VehicleBusyPeriod[]> {
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc("get_vehicle_busy_periods", {
+    p_vehicle_id: vehicleId,
+  });
+  if (error) throw error;
+  return ((data ?? []) as { start_at: string; end_at: string }[]).map(
+    (row) => ({
+      start: row.start_at,
+      end: row.end_at,
+    }),
+  );
+}
+
 export const supabaseBookingRepository: BookingRepository = {
   async list(filters = {}) {
     const sb = getSupabase();
@@ -96,6 +112,8 @@ export const supabaseBookingRepository: BookingRepository = {
     }
     return paginate(items, filters.page, filters.pageSize ?? 20);
   },
+
+  busyPeriods: getVehicleBusyPeriods,
 
   async getById(id) {
     const { data, error } = await getSupabase()
@@ -197,13 +215,9 @@ export const supabaseBookingRepository: BookingRepository = {
       throw new Error("Selected vehicle is blocked for these dates");
     }
 
-    const { data: existing } = await sb
-      .from("bookings")
-      .select("pickup_at, return_at, status")
-      .eq("vehicle_id", input.vehicleId)
-      .neq("status", "cancelled");
-    const conflict = (existing ?? []).some((b) =>
-      overlaps(input.pickupAt, input.returnAt, b.pickup_at, b.return_at),
+    const busy = await getVehicleBusyPeriods(input.vehicleId);
+    const conflict = busy.some((period) =>
+      overlaps(input.pickupAt, input.returnAt, period.start, period.end),
     );
     if (conflict) throw new Error("Selected vehicle is not available for these dates");
 

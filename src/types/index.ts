@@ -80,6 +80,12 @@ export interface VehicleBlockedPeriod {
   reason: string;
 }
 
+/** Public date windows when a vehicle cannot be rented (no customer PII). */
+export interface VehicleBusyPeriod {
+  start: string;
+  end: string;
+}
+
 export interface Vehicle {
   id: string;
   slug: string;

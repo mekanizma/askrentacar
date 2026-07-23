@@ -258,7 +258,11 @@ function BookingArea({ dashboard }: { dashboard: boolean }) {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["account-bookings", user?.id] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["account-bookings", user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ["vehicle-busy-periods"] }),
+        queryClient.invalidateQueries({ queryKey: ["bookings"] }),
+      ]);
       toast.success(t.bookingUpdated);
     },
   });

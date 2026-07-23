@@ -38,14 +38,16 @@ export function Header() {
             className="focus-ring relative -my-1 flex h-14 w-14 shrink-0 items-center sm:h-[4.25rem] sm:w-[4.25rem] md:h-[4.75rem] md:w-[4.75rem]"
             aria-label={BRAND.name}
           >
-            <Image
-              src="/logo.png"
-              alt={BRAND.name}
-              fill
-              priority
-              sizes="(max-width: 640px) 56px, (max-width: 768px) 68px, 76px"
-              className="object-contain object-left drop-shadow-[0_4px_18px_rgba(200,169,106,0.35)]"
-            />
+            <span className="pointer-events-none absolute left-0 top-1/2 h-[7.5rem] w-[7.5rem] -translate-y-1/2 sm:h-[9rem] sm:w-[9rem] md:h-[10rem] md:w-[10rem]">
+              <Image
+                src={BRAND.logoSrc}
+                alt={BRAND.name}
+                fill
+                priority
+                sizes="(max-width: 640px) 120px, (max-width: 768px) 144px, 160px"
+                className="object-contain object-left drop-shadow-[0_4px_18px_rgba(200,169,106,0.35)]"
+              />
+            </span>
           </Link>
 
           <nav

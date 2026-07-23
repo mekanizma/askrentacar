@@ -130,7 +130,7 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
             </div>
           </div>
           <Link
-            href={`/booking?vehicle=${vehicle.slug}`}
+            href={`/vehicles/${vehicle.slug}`}
             className="relative z-20"
           >
             <Button size="sm">{t("vehicle.rent")}</Button>

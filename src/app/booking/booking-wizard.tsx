@@ -8,9 +8,15 @@ import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card, Input, Label, Select } from "@/components/ui/primitives";
+import {
+  BookingDateCalendar,
+  dateToLocalInput,
+  localInputTime,
+  localInputToDate,
+} from "@/components/booking/booking-date-calendar";
 import { bookingCustomerSchema } from "@/lib/validations";
 import { bookingService, localize, vehicleService } from "@/services";
-import { useAddOns, useLocations, useVehicles } from "@/hooks/use-data";
+import { useAddOns, useLocations, useVehicles, useVehicleBusyPeriods } from "@/hooks/use-data";
 import { useAuth } from "@/providers/auth-provider";
 import { useCurrency } from "@/providers/currency-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -71,6 +77,8 @@ const copy = {
     noLocations: "No locations available",
     pickupDate: "Pickup date and time",
     returnDate: "Return date and time",
+    pickupTime: "Pickup time",
+    returnTime: "Return time",
     loadingExtras: "Loading extras…",
     noExtras: "No extras available",
     campaignCode: "Campaign code",
@@ -149,6 +157,8 @@ const copy = {
     noLocations: "Uygun konum bulunamadı",
     pickupDate: "Teslim alma tarihi ve saati",
     returnDate: "İade tarihi ve saati",
+    pickupTime: "Teslim alma saati",
+    returnTime: "İade saati",
     loadingExtras: "Ek hizmetler yükleniyor…",
     noExtras: "Ek hizmet bulunamadı",
     campaignCode: "Kampanya kodu",
@@ -227,6 +237,8 @@ const copy = {
     noLocations: "Нет доступных мест",
     pickupDate: "Дата и время получения",
     returnDate: "Дата и время возврата",
+    pickupTime: "Время получения",
+    returnTime: "Время возврата",
     loadingExtras: "Дополнения загружаются…",
     noExtras: "Нет доступных дополнений",
     campaignCode: "Промокод",
@@ -371,6 +383,7 @@ export default function BookingWizard() {
     queryFn: () => vehicleService.bySlug(vehicleSlug),
     enabled: !!vehicleSlug,
   });
+  const { data: busyPeriods } = useVehicleBusyPeriods(vehicle?.id);
 
   const customerForm = useForm<CustomerInput>({
     resolver: zodResolver(bookingCustomerSchema),
@@ -673,22 +686,57 @@ export default function BookingWizard() {
                   ))}
                 </Select>
               </div>
-              <div>
-                <Label>{t("pickupDate")}</Label>
-                <Input
-                  aria-label={t("pickupDateAria")}
-                  type="datetime-local"
-                  value={pickupAt}
-                  onChange={(e) => setPickupAt(e.target.value)}
+              <div className="md:col-span-2">
+                <BookingDateCalendar
+                  blockedPeriods={vehicle?.blockedPeriods}
+                  busyPeriods={busyPeriods}
+                  rangeStart={localInputToDate(pickupAt)}
+                  rangeEnd={localInputToDate(returnAt)}
+                  onChange={(start, end) => {
+                    const pickupTimeValue = localInputTime(pickupAt);
+                    const returnTimeValue = localInputTime(returnAt);
+                    if (!start) {
+                      setPickupAt("");
+                      setReturnAt("");
+                      return;
+                    }
+                    setPickupAt(dateToLocalInput(start, pickupTimeValue));
+                    setReturnAt(
+                      end ? dateToLocalInput(end, returnTimeValue) : "",
+                    );
+                  }}
                 />
               </div>
               <div>
-                <Label>{t("returnDate")}</Label>
+                <Label>{t("pickupTime")}</Label>
                 <Input
-                  aria-label={t("returnDateAria")}
-                  type="datetime-local"
-                  value={returnAt}
-                  onChange={(e) => setReturnAt(e.target.value)}
+                  aria-label={t("pickupTime")}
+                  type="time"
+                  value={localInputTime(pickupAt)}
+                  disabled={!pickupAt}
+                  onChange={(e) => {
+                    const date = localInputToDate(pickupAt);
+                    if (!date) return;
+                    setPickupAt(
+                      dateToLocalInput(date, e.target.value || "10:00"),
+                    );
+                  }}
+                />
+              </div>
+              <div>
+                <Label>{t("returnTime")}</Label>
+                <Input
+                  aria-label={t("returnTime")}
+                  type="time"
+                  value={localInputTime(returnAt)}
+                  disabled={!returnAt}
+                  onChange={(e) => {
+                    const date = localInputToDate(returnAt);
+                    if (!date) return;
+                    setReturnAt(
+                      dateToLocalInput(date, e.target.value || "10:00"),
+                    );
+                  }}
                 />
               </div>
             </div>

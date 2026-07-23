@@ -51,6 +51,17 @@ export function useBookings(filters?: BookingFilters) {
   });
 }
 
+export function useVehicleBusyPeriods(vehicleId?: string) {
+  return useQuery({
+    queryKey: ["vehicle-busy-periods", vehicleId],
+    queryFn: () => bookingService.busyPeriods(vehicleId!),
+    enabled: !!vehicleId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useDashboardStats() {
   return useQuery({ queryKey: ["dashboard-stats"], queryFn: contentService.dashboardStats });
 }

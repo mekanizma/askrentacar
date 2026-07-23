@@ -53,7 +53,8 @@ function applyFilters(items: Vehicle[], filters: VehicleFilters = {}) {
     const bookedIds = new Set(
       getDatabase()
         .bookings.filter((b) => {
-          if (["cancelled"].includes(b.status)) return false;
+          if (!["pending", "confirmed", "delivered"].includes(b.status))
+            return false;
           const bStart = new Date(b.pickupAt).getTime();
           const bEnd = new Date(b.returnAt).getTime();
           return start < bEnd && end > bStart;
